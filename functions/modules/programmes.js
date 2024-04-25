@@ -10,7 +10,7 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const functions = require("firebase-functions");
 const moment = require("moment");
 const eneoProgrammeEndpoint = 'https://alert.eneo.cm/ajaxOutage.php';
-
+const { triggerPushNotifications } = require('./notifications')
 
 async function fetchProgrammes(region) {
   var formdata = new FormData();
@@ -142,14 +142,35 @@ const triggerNotifications = async () => {
     
 
     logger.log('Area: ' + areaId);
-    const users = await admin.firestore()
+    const quartiers = await admin.firestore()
       .collectionGroup('quartiers')
       .where('area', '==', areaDocRef)
       .get();
 
-    logger.log(users);
+    //logger.log(users);
 
-    logger.log('Quartier Size: ' + users.size);
+    logger.log('Quartier Size: ' + quartiers.size);
+
+    const users = [];
+    quartiers.forEach(doc => {
+      //const data = doc.data();
+      const userId = doc.ref.parent.parent.id;
+      users.push('/users/' + userId);
+    })
+
+    logger.log('Users: ' + users.join(','))
+
+    const area = await areaDocRef.get();
+    const areaData = area.data();
+
+    const prog_date_time = moment(programme.prog_date.toDate()).format('HH:mm');
+    const prog_date_end_time = moment(programme.prog_date_end.toDate()).format('HH:mm');
+
+    await triggerPushNotifications({
+      notification_text: programme.observations,
+      notification_title: areaData.quartier + ' Service de ' + prog_date_time + ' a ' +  prog_date_end_time,
+      user_refs: users.join(',')
+    })
 
     // const area = areaDocRef.get();
 

@@ -1,10 +1,10 @@
 const admin = require('firebase-admin');
-const { serverTimestamp } = require('firebase/firestore')
+//const { serverTimestamp } = require('firebase/firestore')
 const { getFirestore, FieldValue, Timestamp, Filter } = require('firebase-admin/firestore');
-
+const logger = require("firebase-functions/logger");
 
 const triggerPushNotifications = async (notification) => {
-  const notificationsRef = await admin.firestore
+  const notificationsRef = await admin.firestore()
     .collection('ff_push_notifications')
     .add({
       initial_page_name: 'HomePage',
@@ -18,7 +18,7 @@ const triggerPushNotifications = async (notification) => {
       target_audience: 'All',
       timestamp: FieldValue == undefined ? Timestamp.now() : FieldValue.serverTimestamp(),
       user_refs: notification.user_refs,
-    })
+    });
 }
 
 module.exports = {
