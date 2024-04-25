@@ -4,10 +4,11 @@ const logger = require("firebase-functions/logger");
 const crypto = require('crypto');
 const axios = require('axios')
 const admin = require('firebase-admin');
-const { getFirestore, Timestamp, FieldValue, Filter } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue, Timestamp, Filter } = require('firebase-admin/firestore');
+//const { serverTimestamp } = require('firebase/firestore')
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const functions = require("firebase-functions");
-
+const moment = require("moment");
 const eneoProgrammeEndpoint = 'https://alert.eneo.cm/ajaxOutage.php';
 
 
@@ -115,18 +116,98 @@ const processProgramme = async (region) => {
   return programmes;
 }
 
-const processNotifications = async () => {
-  const snapshot = await admin.firestore()
-    .collection('users')
-    .where('quartier', '!=', null)
-    .get()
+const triggerNotifications = async () => {
+  const currentDate = new Date();
+  const currentTimestamp = Timestamp.fromDate(currentDate);
+
+  const tresholdDate = moment(currentDate).add(1, 'hours');
+  const tresholdTimestamp = Timestamp.fromDate(tresholdDate.toDate());
+
+  const programmes = await admin.firestore()
+    .collectionGroup('programmes')
+    .where('prog_date', '>', currentTimestamp)
+    .where('prog_date', '<=', tresholdTimestamp)
+    .get();
+
+  const areas = [];
+  for (let i = 0; i < programmes.size; i++) {
+    var doc = programmes.docs[i];
+    var programme = doc.data();
+
+    //const areaDoc = doc.ref.parent.parent;
+    const areaId = doc.ref.parent.parent.id;
+    const areaDocRef = admin.firestore()
+      .collection('areas')
+      .doc(areaId);
+    
+
+    logger.log('Area: ' + areaId);
+    const users = await admin.firestore()
+      .collectionGroup('quartiers')
+      .where('area', '==', areaDocRef)
+      .get();
+
+    logger.log(users);
+
+    logger.log('Quartier Size: ' + users.size);
+
+    // const area = areaDocRef.get();
+
+    // const prog_date_time = moment(programme.prog_date).format('HH:mm');
+    // const prog_date_end_time = moment(programme.prog_date_end).format('HH:mm');;
+
+    // await admin.firestore()
+    // .collection('ff_push_notifications')
+    // .add({
+    //   initial_page_name: "HomePage",
+    //   notification_sound: "default"
+    //   notification_text: programme.observations,
+    //   notification_title: area.quartier + ' Service de' + prog_date_time + ' a ' +  prog_date_end_time
+    //   num_sent
+    //   parameter_data
+    //   status
+    //   target_audience
+    //   timestamp
+    //   user_refs
+    // })
+
+
+    
+    //areas.push(areaId);
+  }
+  //logger.log('Areas: ' + areas);
+
+  // const users = await admin.firestore()
+  //   .collectionGroup('quartiers')
+  //   .where('area', 'in', areas);
   
-  snapshot.forEach((doc) => {
-    const data = doc.data();
-    console.log(doc.id, " => ", doc.data());
-  });
+  // console.log('Quartier Size2: ' + users.size);
+
+  // programmes.forEach(doc => {
+  //   const data = doc.data();
+  //   const areaId = doc.ref.parent.parent.id;
+
+  //   /// fetch users subscribed to this area
+
+
+  //   const d1 = 0;
+  // })
+  
+  const x = 2;
+  
+
+  // const snapshot = await admin.firestore()
+  //   .collection('users')
+  //   .where('quartier', '!=', null)
+  //   .get()
+  
+  // snapshot.forEach((doc) => {
+  //   const data = doc.data();
+  //   console.log(doc.id, " => ", doc.data());
+  // });
 }
 
 module.exports = {
-  processProgramme
+  processProgramme,
+  triggerNotifications
 }

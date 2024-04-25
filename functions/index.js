@@ -80,7 +80,7 @@ const REGIONS = {
 //   ]
 // }
 
-const { processProgramme } = require('./modules/programmes')
+const { processProgramme, triggerNotifications } = require('./modules/programmes')
 //ogger.info("BEGIN - fetchDouala", {structuredData: true});
 
 exports.fetchRegion = onRequest({...generalOpts, timeoutSeconds: 300}, async (request, response) => {
@@ -95,6 +95,27 @@ exports.fetchRegion = onRequest({...generalOpts, timeoutSeconds: 300}, async (re
     throw new functions.https.HttpsError("Error", error);
   }
   logger.info(`END - fetch ${region}`);
+});
+
+exports.triggerNotifications = onRequest({...generalOpts, timeoutSeconds: 300}, async (request, response) => {
+  //const region = request.query.region;
+  logger.info(`BEGIN - triggerNotifications`);
+
+  await triggerNotifications();
+   
+  //logger.log(programmes);
+  response.send('triggered');
+
+  // try {
+  //   await triggerNotifications();
+   
+  //   //logger.log(programmes);
+  //   response.send('triggered');
+  // } catch (error) {
+  //   logger.error(error);
+  //   throw new functions.https.HttpsError("Error", error);
+  // }
+  logger.info(`END - triggerNotifications`);
 });
 
 
