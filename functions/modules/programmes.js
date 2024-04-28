@@ -23,7 +23,7 @@ async function fetchProgrammes(region) {
 const formatDate = (date, time) => {
   const time_component = time.split('H');
   const hour = time_component[0];
-  const minute = time_component[1];
+  const minute = time_component[1].replace(':', '');;
   const timezone = '+01:00'
 
   const result = new Date(`${date}T${hour}:${minute}:00.000${timezone}`);
@@ -39,6 +39,8 @@ const mapToProgrammeDocument = ({ prog_date, prog_heure_debut, prog_heure_fin, o
   const prog_date_begin = formatDate(prog_date, prog_heure_debut);
   const prog_date_end = formatDate(prog_date, prog_heure_fin);
 
+  logger.log('prog_date_begin- ' + prog_date_begin);
+  logger.log('prog_date_end - ' + prog_date_end);
   return {
     observations: observations.toSentenceCase(),
     prog_date: Timestamp.fromDate(prog_date_begin),
@@ -47,6 +49,7 @@ const mapToProgrammeDocument = ({ prog_date, prog_heure_debut, prog_heure_fin, o
 }
 
 const mapToAreaDocument = ({ ville, quartier, region }) => {
+  
   return {
     ville: ville.toSentenceCase().trim(),
     region: region.toSentenceCase().trim(),
@@ -59,6 +62,7 @@ String.prototype.toSentenceCase = function() {
 }
 
 const processArea = async (programme) => {
+  logger.log('Process Area: ' + programme.quartier.toSentenceCase().trim());
   const snapshot = await admin.firestore()
     .collection('areas')
     .where('quartier', '==', programme.quartier.toSentenceCase().trim())
@@ -96,7 +100,7 @@ const updateProgramme = async (areaId, programme) => {
   if (doc.exists) {
     return;
   }
-  
+  logger.log('MapToProgramme: ' + programme)
   const programmeDocument = mapToProgrammeDocument(programme);
   
   await programmeRef.set(programmeDocument)
@@ -150,6 +154,10 @@ const triggerNotifications = async () => {
     //logger.log(users);
 
     logger.log('Quartier Size: ' + quartiers.size);
+
+    if (quartiers.size == 0) {
+      return;
+    }
 
     const users = [];
     quartiers.forEach(doc => {

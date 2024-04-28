@@ -119,6 +119,33 @@ exports.triggerNotifications = onRequest({...generalOpts, timeoutSeconds: 300}, 
 });
 
 
+// 0 * * * * // every hour
+
+exports.scheduleFetchRegions = onSchedule({ 
+  schedule: '0 * * * *',
+  //timeZone:'UTC+1',
+  ...generalOpts 
+}, async (event) => {
+//exports.scheduleFetchRegions =   functions.pubsub.schedule(`0 * * * *`).onRun(async (_) => {
+  logger.info(`BEGIN - scheduleFetchRegions`);
+  
+  for (var prop in REGIONS) {
+    logger.log('Fetch ' + prop);
+    const programmes = await processProgramme(REGIONS[prop]);
+    logger.log(programmes);
+    logger.log(prop + ' loaded');
+  }
+
+  await triggerNotifications();
+
+  logger.info(`END - scheduleFetchRegions`);
+})
+
+// exports.scheduleTriggerPushNotifications = onSchedule("1 * * * *", async (event) => {
+//   logger.log("loadDoualaSchedules ran....");
+//   logger.debug('azbi');
+// });
+
 // exports.testSchedules = onSchedule("1 * * * *", async (event) => {
 //   logger.log("loadDoualaSchedules ran....");
 //   logger.debug('azbi');
