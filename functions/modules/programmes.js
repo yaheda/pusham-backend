@@ -236,7 +236,76 @@ const triggerNotifications = async () => {
   // });
 }
 
+const clearOldProgrammes = async () => {
+  const currentDate = new Date();
+  const tresholdDate = moment(currentDate).subtract(10, 'days');
+  const tresholdTimestamp = Timestamp.fromDate(tresholdDate.toDate());
+  logger.log('Threshold - ' + tresholdDate);
+  
+  const programmes = await admin.firestore()
+    .collectionGroup('programmes')
+    .where('prog_date', '<', tresholdTimestamp)
+    .get();
+
+  logger.log('Programmes clear size: ' + programmes.size);
+  if (programmes.size == 0) {
+    logger.log('Nothing to clear');
+    return;
+  }
+
+  const batch = admin.firestore().batch();
+  programmes.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+  await batch.commit();
+
+  logger.log('Old programmes cleared')
+}
+
+const getProgrammes = async () => {
+  const areas = await admin.firestore()
+    .collection('areas')
+    .where('ville', '==', 'Douala')
+    .get();
+
+  const areasRef = admin.firestore().collection('areas');
+  
+  const areaDoc = areas.docs[0];
+
+  //const area = areas.docs[0].data();
+  //logger.log(area);
+  const areaId = areaDoc.id;
+
+  //logger.log('AreaID: ' + areaId);
+
+  const programmes = await areasRef.doc(areaId).collection('programmes').get();
+
+  const results = [];
+  programmes.docs.forEach((doc) => {
+    const programme = doc.data();
+    
+    const prog_day = moment(programme.prog_date.toDate()).format('MMMM Do YYYY');
+    const prog_date_time = moment(programme.prog_date.toDate()).format('HH:mm');
+    const prog_date_end_time = moment(programme.prog_date_end.toDate()).format('HH:mm');
+
+    const message = `${programme.observations}.- ${prog_day} from ${prog_date_time} to ${prog_date_end_time}`;
+
+    const prog = {
+      message,
+      ...programme
+    }
+    results.push(prog);
+    //logger.log(doc.data());
+  });
+
+  return results;
+  
+}
+
 module.exports = {
   processProgramme,
-  triggerNotifications
+  triggerNotifications,
+  clearOldProgrammes,
+
+  getProgrammes
 }

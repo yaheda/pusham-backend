@@ -16,6 +16,7 @@ const admin = require('firebase-admin');
 const { getFirestore, Timestamp, FieldValue, Filter } = require('firebase-admin/firestore');
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const functions = require("firebase-functions");
+const { processProgramme, triggerNotifications, clearOldProgrammes, getProgrammes } = require('./modules/programmes');
 
 admin.initializeApp();
 
@@ -29,6 +30,28 @@ const generalOpts = {
 exports.helloCustom1 = onRequest((request, response) => {
   logger.info("Hello logs!", {structuredData: true});
   response.send("Hello1 from Firebase Custom1 Backend1!");
+});
+
+exports.querySchedule = onRequest(async (request, response) => {
+  logger.log('headers...')
+  logger.log(request.headers);
+  logger.log('body...');
+  logger.log(request.body);
+
+  const programmes = await getProgrammes();
+
+  if (programmes.length == 0) {
+    response.send('No planned outage');
+    return;
+  }
+
+  let schedule = '';
+  programmes.forEach((proggramme) => {
+    schedule += `${proggramme.message}`
+  })
+
+
+  response.send(schedule);
 });
 
 const REGIONS = {
@@ -80,8 +103,21 @@ const REGIONS = {
 //   ]
 // }
 
-const { processProgramme, triggerNotifications } = require('./modules/programmes')
+const { request } = require("http");
 //ogger.info("BEGIN - fetchDouala", {structuredData: true});
+
+exports.clearOldProgrammes = onRequest({...generalOpts, timeoutSeconds: 300}, async (request, response) => {
+  
+  logger.info(`BEGIN - clearOldProgrammes`);
+  try {
+    await clearOldProgrammes();
+    response.send('cleared');
+  } catch (error) {
+    logger.error(error);
+    throw new functions.https.HttpsError("Error", error);
+  }
+  logger.info(`END - clearOldProgrammes`);
+});
 
 exports.fetchRegion = onRequest({...generalOpts, timeoutSeconds: 300}, async (request, response) => {
   const region = request.query.region;
