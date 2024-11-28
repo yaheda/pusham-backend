@@ -2,7 +2,6 @@
   "functions": [
     {
       "source": "functions",
-      
       "ignore": [
         "node_modules",
         ".git",
@@ -24,6 +23,9 @@
     "singleProjectMode": true,
     "pubsub": {
       "port": 8085
+    },
+    "database": {
+      "port": 9000
     }
   }
 }

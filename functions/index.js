@@ -17,6 +17,7 @@ const { getFirestore, Timestamp, FieldValue, Filter } = require('firebase-admin/
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const functions = require("firebase-functions");
 const { processProgramme, triggerNotifications, clearOldProgrammes, getProgrammes } = require('./modules/programmes');
+const { processInitialMessage } = require('./modules/openai-assistant');
 
 admin.initializeApp();
 
@@ -30,6 +31,11 @@ const generalOpts = {
 exports.helloCustom1 = onRequest((request, response) => {
   logger.info("Hello logs!", {structuredData: true});
   response.send("Hello1 from Firebase Custom1 Backend1!");
+});
+
+exports.getInitialMessageCategory = onRequest(async (request, response) => {
+  await processInitialMessage();
+  response.send("getInitialMessageCategory 1");
 });
 
 exports.querySchedule = onRequest(async (request, response) => {
