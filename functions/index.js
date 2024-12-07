@@ -16,8 +16,8 @@ const admin = require('firebase-admin');
 const { getFirestore, Timestamp, FieldValue, Filter } = require('firebase-admin/firestore');
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const functions = require("firebase-functions");
-const { processProgramme, triggerNotifications, clearOldProgrammes, getProgrammes } = require('./modules/programmes');
-const { processInitialMessage } = require('./modules/openai-assistant');
+const { processProgramme, triggerNotifications, clearOldProgrammes, getProgrammes, getProgrammeSummary } = require('./modules/programmes');
+const { processInitialMessage, quickPrompt } = require('./modules/openai-assistant');
 
 admin.initializeApp();
 
@@ -33,9 +33,45 @@ exports.helloCustom1 = onRequest((request, response) => {
   response.send("Hello1 from Firebase Custom1 Backend1!");
 });
 
-exports.getInitialMessageCategory = onRequest(async (request, response) => {
-  await processInitialMessage();
-  response.send("getInitialMessageCategory 1");
+exports.processInitialMessage = onRequest({ secrets: ["OPENAI_API_KEY"] }, async (request, response) => {
+  const message = request.body.message;
+  logger.log(message);
+  var processResult = await processInitialMessage(message);
+
+  const { category, city, neighborhood } = processResult;
+
+  switch (category) {
+    case "fault report":
+      break;
+    case "schedule query":
+      if (city && neighborhood) {
+        processResult.completed_message = await invokeQuerySchedule(neighborhood, city);
+      }
+      break;
+    case "notification subscription":
+      break;
+    
+    default:
+      break;
+  }
+
+  response.send(processResult);
+});
+
+const invokeQuerySchedule = async (quartier, ville) => {
+  const programmes = await getProgrammes(quartier, ville);
+  let schedule = getProgrammeSummary(programmes)
+
+  // const prompt = `Summarise per date: ${schedule}`;
+  // const result = await quickPrompt(prompt);
+
+  return schedule;
+}
+
+exports.quickPromt = onRequest({ secrets: ["OPENAI_API_KEY"] }, async (request, response) => {
+  const prompt = request.body.prompt;
+  const result = await quickPrompt(prompt);
+  response.send(result);
 });
 
 exports.querySchedule = onRequest(async (request, response) => {
@@ -44,17 +80,11 @@ exports.querySchedule = onRequest(async (request, response) => {
   logger.log('body...');
   logger.log(request.body);
 
-  const programmes = await getProgrammes();
+  const { quartier, ville } = request.body
 
-  if (programmes.length == 0) {
-    response.send('No planned outage');
-    return;
-  }
+  const programmes = await getProgrammes(quartier, ville);
 
-  let schedule = '';
-  programmes.forEach((proggramme) => {
-    schedule += `${proggramme.message}`
-  })
+  let schedule = getProgrammeSummary(programmes)
 
 
   response.send(schedule);

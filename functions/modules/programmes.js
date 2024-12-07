@@ -262,10 +262,12 @@ const clearOldProgrammes = async () => {
   logger.log('Old programmes cleared')
 }
 
-const getProgrammes = async () => {
+const getProgrammes = async (quartier, ville) => {
   const areas = await admin.firestore()
     .collection('areas')
-    .where('ville', '==', 'Douala')
+    //.where('ville', '==', 'Douala')
+    .where('ville', '==', ville)
+    .where('quartier', '==', quartier)
     .get();
 
   const areasRef = admin.firestore().collection('areas');
@@ -274,6 +276,11 @@ const getProgrammes = async () => {
 
   //const area = areas.docs[0].data();
   //logger.log(area);
+
+  if (!areaDoc) {
+    return [];
+  }
+
   const areaId = areaDoc.id;
 
   //logger.log('AreaID: ' + areaId);
@@ -288,7 +295,7 @@ const getProgrammes = async () => {
     const prog_date_time = moment(programme.prog_date.toDate()).format('HH:mm');
     const prog_date_end_time = moment(programme.prog_date_end.toDate()).format('HH:mm');
 
-    const message = `${programme.observations}.- ${prog_day} from ${prog_date_time} to ${prog_date_end_time}`;
+    const message = `${programme.observations} - ${prog_day} from ${prog_date_time} to ${prog_date_end_time}`;
 
     const prog = {
       message,
@@ -302,10 +309,24 @@ const getProgrammes = async () => {
   
 }
 
+const getProgrammeSummary = (programmes) => {
+  if (programmes.length == 0) {
+    return 'No planned outage';
+  }
+
+  let schedule = '';
+  programmes.forEach((proggramme) => {
+    schedule += `${proggramme.message}. `
+  })
+
+  return schedule;
+}
+
 module.exports = {
   processProgramme,
   triggerNotifications,
   clearOldProgrammes,
 
-  getProgrammes
+  getProgrammes,
+  getProgrammeSummary
 }
